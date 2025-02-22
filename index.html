@@ -16,6 +16,7 @@
     <button onclick="stitchImages('vertical')">Stitch Vertically</button>
     <button onclick="stitchImages('horizontal', true)">Equalize Width</button>
     <button onclick="stitchImages('vertical', true)">Equalize Height</button>
+    <button onclick="downloadImage()">Download Image</button>
     <br><br>
     <canvas id="canvas"></canvas>
     <script>
@@ -70,6 +71,14 @@
                 if (direction === 'horizontal') offsetX += drawWidth;
                 else offsetY += drawHeight;
             }
+        }
+        
+        function downloadImage() {
+            const canvas = document.getElementById('canvas');
+            const link = document.createElement('a');
+            link.download = 'stitched_image.png';
+            link.href = canvas.toDataURL();
+            link.click();
         }
     </script>
 </body>
