@@ -76,10 +76,12 @@
         function downloadImage() {
             const canvas = document.getElementById('canvas');
             const link = document.createElement('a');
-            link.download = 'stitched_image.png';
+            const randomNum = Math.floor(Math.random() * 1000000);
+            link.download = `stitched_${randomNum}.png`;
             link.href = canvas.toDataURL();
             link.click();
         }
+
     </script>
 </body>
 </html>
