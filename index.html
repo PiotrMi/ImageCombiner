@@ -7,11 +7,14 @@
     <style>
         body { font-family: Arial, sans-serif; text-align: center; }
         canvas { margin-top: 10px; border: 1px solid #000; }
+        .image-list { display: flex; gap: 10px; overflow-x: auto; padding: 10px; }
+        .image-list img { cursor: grab; width: 100px; height: auto; border: 2px solid black; }
     </style>
 </head>
 <body>
     <h1>Image Stitcher</h1>
     <input type="file" id="fileInput" multiple accept="image/*"><br><br>
+    <div class="image-list" id="imageList"></div>
     <button onclick="stitchImages('horizontal')">Stitch Horizontally</button>
     <button onclick="stitchImages('vertical')">Stitch Vertically</button>
     <button onclick="stitchImages('horizontal', true)">Equalize Width</button>
@@ -20,20 +23,59 @@
     <br><br>
     <canvas id="canvas"></canvas>
     <script>
-        function stitchImages(direction, equalize = false) {
-            const files = document.getElementById('fileInput').files;
-            if (files.length === 0) return alert("Select images first!");
+        let imageObjects = [];
+        function handleFiles(event) {
+            const files = event.target.files;
+            const imageList = document.getElementById('imageList');
+            imageList.innerHTML = '';
+            imageObjects = [];
             
-            const images = [];
-            let loaded = 0;
-            for (let file of files) {
+            Array.from(files).forEach((file, index) => {
                 const img = new Image();
                 img.src = URL.createObjectURL(file);
                 img.onload = function() {
-                    images.push(img);
-                    if (++loaded === files.length) mergeImages(images, direction, equalize);
+                    imageObjects[index] = img;
                 };
-            }
+                img.draggable = true;
+                img.dataset.index = index;
+                img.ondragstart = (e) => e.dataTransfer.setData('text/plain', e.target.dataset.index);
+                img.ondragover = (e) => e.preventDefault();
+                img.ondrop = (e) => {
+                    e.preventDefault();
+                    const draggedIndex = e.dataTransfer.getData('text/plain');
+                    const droppedIndex = e.target.dataset.index;
+                    
+                    [imageObjects[draggedIndex], imageObjects[droppedIndex]] = [imageObjects[droppedIndex], imageObjects[draggedIndex]];
+                    renderImageList();
+                };
+                imageList.appendChild(img);
+            });
+        }
+        
+        function renderImageList() {
+            const imageList = document.getElementById('imageList');
+            imageList.innerHTML = '';
+            imageObjects.forEach((img, index) => {
+                const clone = img.cloneNode();
+                clone.dataset.index = index;
+                clone.draggable = true;
+                clone.ondragstart = (e) => e.dataTransfer.setData('text/plain', e.target.dataset.index);
+                clone.ondragover = (e) => e.preventDefault();
+                clone.ondrop = (e) => {
+                    e.preventDefault();
+                    const draggedIndex = e.dataTransfer.getData('text/plain');
+                    const droppedIndex = e.target.dataset.index;
+                    
+                    [imageObjects[draggedIndex], imageObjects[droppedIndex]] = [imageObjects[droppedIndex], imageObjects[draggedIndex]];
+                    renderImageList();
+                };
+                imageList.appendChild(clone);
+            });
+        }
+        
+        function stitchImages(direction, equalize = false) {
+            if (imageObjects.length === 0) return alert("Select images first!");
+            mergeImages([...imageObjects], direction, equalize);
         }
         
         function mergeImages(images, direction, equalize) {
@@ -42,13 +84,13 @@
             
             let width = 0, height = 0;
             if (direction === 'horizontal') {
-                const maxHeight = equalize ? Math.max(...images.map(img => img.height)) : 0;
-                width = images.reduce((sum, img) => sum + img.width * (equalize ? maxHeight / img.height : 1), 0);
-                height = equalize ? maxHeight : Math.max(...images.map(img => img.height));
+                const maxHeight = equalize ? Math.max(...images.map(img => img.naturalHeight)) : 0;
+                width = images.reduce((sum, img) => sum + img.naturalWidth * (equalize ? maxHeight / img.naturalHeight : 1), 0);
+                height = equalize ? maxHeight : Math.max(...images.map(img => img.naturalHeight));
             } else {
-                const maxWidth = equalize ? Math.max(...images.map(img => img.width)) : 0;
-                width = equalize ? maxWidth : Math.max(...images.map(img => img.width));
-                height = images.reduce((sum, img) => sum + img.height * (equalize ? maxWidth / img.width : 1), 0);
+                const maxWidth = equalize ? Math.max(...images.map(img => img.naturalWidth)) : 0;
+                width = equalize ? maxWidth : Math.max(...images.map(img => img.naturalWidth));
+                height = images.reduce((sum, img) => sum + img.naturalHeight * (equalize ? maxWidth / img.naturalWidth : 1), 0);
             }
             
             canvas.width = width;
@@ -56,15 +98,15 @@
             
             let offsetX = 0, offsetY = 0;
             for (let img of images) {
-                let drawWidth = img.width;
-                let drawHeight = img.height;
+                let drawWidth = img.naturalWidth;
+                let drawHeight = img.naturalHeight;
                 if (equalize) {
                     if (direction === 'horizontal') {
                         drawHeight = height;
-                        drawWidth = (img.width * height) / img.height;
+                        drawWidth = (img.naturalWidth * height) / img.naturalHeight;
                     } else {
                         drawWidth = width;
-                        drawHeight = (img.height * width) / img.width;
+                        drawHeight = (img.naturalHeight * width) / img.naturalWidth;
                     }
                 }
                 ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
@@ -76,12 +118,12 @@
         function downloadImage() {
             const canvas = document.getElementById('canvas');
             const link = document.createElement('a');
-            const randomNum = Math.floor(Math.random() * 1000000);
-            link.download = `stitched_${randomNum}.png`;
+            link.download = `stitched_${Date.now()}.png`;
             link.href = canvas.toDataURL();
             link.click();
         }
-
+        
+        document.getElementById('fileInput').addEventListener('change', handleFiles);
     </script>
 </body>
 </html>
