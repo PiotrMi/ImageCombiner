@@ -14,10 +14,12 @@
     <input type="file" id="fileInput" multiple accept="image/*"><br><br>
     <button onclick="stitchImages('horizontal')">Stitch Horizontally</button>
     <button onclick="stitchImages('vertical')">Stitch Vertically</button>
+    <button onclick="stitchImages('horizontal', true)">Equalize Width</button>
+    <button onclick="stitchImages('vertical', true)">Equalize Height</button>
     <br><br>
     <canvas id="canvas"></canvas>
     <script>
-        function stitchImages(direction) {
+        function stitchImages(direction, equalize = false) {
             const files = document.getElementById('fileInput').files;
             if (files.length === 0) return alert("Select images first!");
             
@@ -28,22 +30,24 @@
                 img.src = URL.createObjectURL(file);
                 img.onload = function() {
                     images.push(img);
-                    if (++loaded === files.length) mergeImages(images, direction);
+                    if (++loaded === files.length) mergeImages(images, direction, equalize);
                 };
             }
         }
         
-        function mergeImages(images, direction) {
+        function mergeImages(images, direction, equalize) {
             const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d');
             
             let width = 0, height = 0;
             if (direction === 'horizontal') {
-                width = images.reduce((sum, img) => sum + img.width, 0);
-                height = Math.max(...images.map(img => img.height));
+                const maxHeight = equalize ? Math.max(...images.map(img => img.height)) : 0;
+                width = images.reduce((sum, img) => sum + img.width * (equalize ? maxHeight / img.height : 1), 0);
+                height = equalize ? maxHeight : Math.max(...images.map(img => img.height));
             } else {
-                width = Math.max(...images.map(img => img.width));
-                height = images.reduce((sum, img) => sum + img.height, 0);
+                const maxWidth = equalize ? Math.max(...images.map(img => img.width)) : 0;
+                width = equalize ? maxWidth : Math.max(...images.map(img => img.width));
+                height = images.reduce((sum, img) => sum + img.height * (equalize ? maxWidth / img.width : 1), 0);
             }
             
             canvas.width = width;
@@ -51,9 +55,20 @@
             
             let offsetX = 0, offsetY = 0;
             for (let img of images) {
-                ctx.drawImage(img, offsetX, offsetY);
-                if (direction === 'horizontal') offsetX += img.width;
-                else offsetY += img.height;
+                let drawWidth = img.width;
+                let drawHeight = img.height;
+                if (equalize) {
+                    if (direction === 'horizontal') {
+                        drawHeight = height;
+                        drawWidth = (img.width * height) / img.height;
+                    } else {
+                        drawWidth = width;
+                        drawHeight = (img.height * width) / img.width;
+                    }
+                }
+                ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+                if (direction === 'horizontal') offsetX += drawWidth;
+                else offsetY += drawHeight;
             }
         }
     </script>
