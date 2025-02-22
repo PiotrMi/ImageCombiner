@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Stitcher</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        canvas { margin-top: 10px; border: 1px solid #000; }
+    </style>
+</head>
+<body>
+    <h1>Image Stitcher</h1>
+    <input type="file" id="fileInput" multiple accept="image/*"><br><br>
+    <button onclick="stitchImages('horizontal')">Stitch Horizontally</button>
+    <button onclick="stitchImages('vertical')">Stitch Vertically</button>
+    <br><br>
+    <canvas id="canvas"></canvas>
+    <script>
+        function stitchImages(direction) {
+            const files = document.getElementById('fileInput').files;
+            if (files.length === 0) return alert("Select images first!");
+            
+            const images = [];
+            let loaded = 0;
+            for (let file of files) {
+                const img = new Image();
+                img.src = URL.createObjectURL(file);
+                img.onload = function() {
+                    images.push(img);
+                    if (++loaded === files.length) mergeImages(images, direction);
+                };
+            }
+        }
+        
+        function mergeImages(images, direction) {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            let width = 0, height = 0;
+            if (direction === 'horizontal') {
+                width = images.reduce((sum, img) => sum + img.width, 0);
+                height = Math.max(...images.map(img => img.height));
+            } else {
+                width = Math.max(...images.map(img => img.width));
+                height = images.reduce((sum, img) => sum + img.height, 0);
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            let offsetX = 0, offsetY = 0;
+            for (let img of images) {
+                ctx.drawImage(img, offsetX, offsetY);
+                if (direction === 'horizontal') offsetX += img.width;
+                else offsetY += img.height;
+            }
+        }
+    </script>
+</body>
+</html>
