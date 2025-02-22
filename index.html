@@ -7,14 +7,28 @@
     <style>
         body { font-family: Arial, sans-serif; text-align: center; }
         canvas { margin-top: 10px; border: 1px solid #000; }
-        .image-list { display: flex; gap: 10px; overflow-x: auto; padding: 10px; }
-        .image-list img { cursor: grab; width: 100px; height: auto; border: 2px solid black; }
+        .image-list {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 10px;
+            justify-content: start;
+            margin-bottom: 20px;
+        }
+        .image-list img {
+            width: 100px;
+            height: auto;
+            border: 2px solid black;
+        }
+        .input-order { width: 300px; margin-top: 10px; }
     </style>
 </head>
 <body>
     <h1>Image Stitcher</h1>
     <input type="file" id="fileInput" multiple accept="image/*"><br><br>
     <div class="image-list" id="imageList"></div>
+    <input type="text" id="imageOrder" class="input-order" placeholder="Enter order (e.g., 1, 2, 3)"><br><br>
+    <button onclick="applyOrder()">Apply Order</button><br><br>
     <button onclick="stitchImages('horizontal')">Stitch Horizontally</button>
     <button onclick="stitchImages('vertical')">Stitch Vertically</button>
     <button onclick="stitchImages('horizontal', true)">Equalize Width</button>
@@ -24,7 +38,7 @@
     <canvas id="canvas"></canvas>
     <script>
         let imageObjects = [];
-        let dragStartIndex = null;
+        let orderedImages = [];
 
         function handleFiles(event) {
             const files = event.target.files;
@@ -37,84 +51,40 @@
                 img.src = URL.createObjectURL(file);
                 img.onload = function() {
                     imageObjects[index] = img;
+                    const imgElement = document.createElement('img');
+                    imgElement.src = img.src;
+                    imgElement.alt = `Image ${index + 1}`;
+                    imageList.appendChild(imgElement);
                 };
-                img.dataset.index = index;
-
-                img.addEventListener('mousedown', (e) => onDragStart(e, index));
-                img.addEventListener('mousemove', onDragMove);
-                img.addEventListener('mouseup', (e) => onDragEnd(e, index));
-                img.addEventListener('mouseleave', (e) => onDragEnd(e, index));
-
-                img.addEventListener('touchstart', (e) => onTouchStart(e, index));
-                img.addEventListener('touchmove', onTouchMove);
-                img.addEventListener('touchend', (e) => onTouchEnd(e, index));
-                img.addEventListener('touchcancel', (e) => onTouchEnd(e, index));
-
-                imageList.appendChild(img);
             });
         }
 
-        function onDragStart(e, index) {
-            dragStartIndex = index;
-            e.preventDefault();
-        }
+        function applyOrder() {
+            const orderText = document.getElementById('imageOrder').value;
+            const order = orderText.split(',').map(num => parseInt(num.trim()) - 1).filter(num => num >= 0 && num < imageObjects.length);
 
-        function onDragMove(e) {
-            e.preventDefault();
-        }
+            if (order.length === 0 || order.length !== imageObjects.length) {
+                return alert("Please enter a valid order.");
+            }
 
-        function onDragEnd(e, index) {
-            if (dragStartIndex === null || dragStartIndex === index) return;
-
-            // Swap images
-            [imageObjects[dragStartIndex], imageObjects[index]] = [imageObjects[index], imageObjects[dragStartIndex]];
+            orderedImages = order.map(i => imageObjects[i]);
             renderImageList();
-            dragStartIndex = null;
-        }
-
-        function onTouchStart(e, index) {
-            dragStartIndex = index;
-            e.preventDefault();
-        }
-
-        function onTouchMove(e) {
-            e.preventDefault();
-        }
-
-        function onTouchEnd(e, index) {
-            if (dragStartIndex === null || dragStartIndex === index) return;
-
-            // Swap images
-            [imageObjects[dragStartIndex], imageObjects[index]] = [imageObjects[index], imageObjects[dragStartIndex]];
-            renderImageList();
-            dragStartIndex = null;
         }
 
         function renderImageList() {
             const imageList = document.getElementById('imageList');
             imageList.innerHTML = '';
-            imageObjects.forEach((img, index) => {
-                const clone = img.cloneNode();
-                clone.dataset.index = index;
-
-                // Reapply event listeners
-                clone.addEventListener('mousedown', (e) => onDragStart(e, index));
-                clone.addEventListener('mousemove', onDragMove);
-                clone.addEventListener('mouseup', (e) => onDragEnd(e, index));
-                clone.addEventListener('mouseleave', (e) => onDragEnd(e, index));
-
-                clone.addEventListener('touchstart', (e) => onTouchStart(e, index));
-                clone.addEventListener('touchmove', onTouchMove);
-                clone.addEventListener('touchend', (e) => onTouchEnd(e, index));
-                clone.addEventListener('touchcancel', (e) => onTouchEnd(e, index));
-
-                imageList.appendChild(clone);
+            orderedImages.forEach((img, index) => {
+                const imgElement = document.createElement('img');
+                imgElement.src = img.src;
+                imgElement.alt = `Ordered Image ${index + 1}`;
+                imageList.appendChild(imgElement);
             });
         }
 
         function stitchImages(direction, equalize = false) {
-            if (imageObjects.length === 0) return alert("Select images first!");
-            mergeImages([...imageObjects], direction, equalize);
+            if (orderedImages.length === 0) return alert("Select images first!");
+            mergeImages([...orderedImages], direction, equalize);
         }
 
         function mergeImages(images, direction, equalize) {
